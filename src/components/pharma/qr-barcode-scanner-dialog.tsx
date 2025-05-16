@@ -30,30 +30,35 @@ export function QrBarcodeScannerDialog({
   onScanSuccess,
   scanType = "Barcode",
 }: QrBarcodeScannerDialogProps) {
+  // activeScannerInstanceRef stores the LATEST successfully initialized or attempted scanner instance.
   const activeScannerInstanceRef = useRef<Html5QrcodeScanner | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // This variable will hold the scanner instance specific to THIS effect invocation.
+    let currentEffectScannerInstance: Html5QrcodeScanner | null = null;
     let initTimeoutId: NodeJS.Timeout | null = null;
 
     if (open) {
       initTimeoutId = setTimeout(() => {
-        const scannerElement = document.getElementById(SCANNER_ELEMENT_ID);
+        // Attempt to clear any globally tracked scanner instance before starting a new one.
+        // This is important if the dialog was closed and reopened quickly,
+        // or if a previous instance failed to clean up properly.
+        if (activeScannerInstanceRef.current) {
+          activeScannerInstanceRef.current.clear().catch(err => {
+            console.warn("QrBarcodeScannerDialog: Previous active scanner instance clear failed on new init:", err);
+          });
+          activeScannerInstanceRef.current = null;
+        }
 
+        const scannerElement = document.getElementById(SCANNER_ELEMENT_ID);
         if (!scannerElement) {
-          console.error(`Scanner UI element #${SCANNER_ELEMENT_ID} not found even after delay.`);
+          console.error(`QrBarcodeScannerDialog: Scanner UI element #${SCANNER_ELEMENT_ID} not found even after delay.`);
           setError("Scanner UI element not ready. Please try closing and reopening the scanner. If the problem persists, check browser console for errors.");
           return;
         }
         
-        setError(null); 
-
-        if (activeScannerInstanceRef.current) {
-            activeScannerInstanceRef.current.clear().catch(err => {
-                console.warn("Scanner: Cleared a pre-existing scanner instance before new render.", err);
-            });
-            activeScannerInstanceRef.current = null;
-        }
+        setError(null); // Clear previous errors
 
         const formatsToSupport = [
           Html5QrcodeSupportedFormats.CODE_128,
@@ -67,7 +72,7 @@ export function QrBarcodeScannerDialog({
         ];
 
         try {
-          const html5QrcodeScanner = new Html5QrcodeScanner(
+          currentEffectScannerInstance = new Html5QrcodeScanner(
             SCANNER_ELEMENT_ID,
             {
               fps: 10,
@@ -83,67 +88,86 @@ export function QrBarcodeScannerDialog({
             true // ENABLE VERBOSE LOGGING
           );
 
+          // Assign to the ref immediately after successful instantiation.
+          activeScannerInstanceRef.current = currentEffectScannerInstance;
+
           const successCallback: QrcodeSuccessCallback = (decodedText, result) => {
-            // Ensure the component is still mounted and dialog is open before acting
-            if (activeScannerInstanceRef.current) { 
+            // Ensure this callback is from the currently active scanner instance and dialog is still open.
+            if (activeScannerInstanceRef.current === currentEffectScannerInstance && open) { 
               onScanSuccess(decodedText);
-              onOpenChange(false); 
+              onOpenChange(false); // This will trigger the effect's cleanup for this instance.
             }
           };
 
           const localErrorCallback: QrcodeErrorCallback = (errorMessage) => {
+             // console.debug("Scanner runtime notice/error:", errorMessage); // Log all for debugging
              if (!errorMessage.toLowerCase().includes("not found") &&
-                 !errorMessage.toLowerCase().includes("unable to query supported devices") &&
+                 !errorMessage.toLowerCase().includes("unable to query supported devices") && // Common, ignorable during startup
                  !errorMessage.toLowerCase().includes("undefined or null")) { 
-                // console.warn("Scanner runtime notice:", errorMessage);
+                // console.warn("Scanner runtime notice (filtered):", errorMessage);
              }
           };
           
-          // Assign to ref *before* render, so cleanup can find it if render fails synchronously
-          activeScannerInstanceRef.current = html5QrcodeScanner; 
-
-          const renderPromise = html5QrcodeScanner.render(successCallback, localErrorCallback);
+          const renderPromise = currentEffectScannerInstance.render(successCallback, localErrorCallback);
 
           if (renderPromise && typeof renderPromise.then === 'function') {
             renderPromise
-              .then(() => {
-                // Successfully rendered. Instance is already in ref.
-              })
               .catch(renderPromiseError => {
-                  console.error("Error from scanner.render() Promise:", renderPromiseError);
+                  console.error("QrBarcodeScannerDialog: Error from scanner.render() Promise:", renderPromiseError);
                   setError(`Scanner render failed: ${renderPromiseError instanceof Error ? renderPromiseError.message : String(renderPromiseError)}`);
+                  // If render fails, try to clear this instance
+                  if (activeScannerInstanceRef.current === currentEffectScannerInstance) {
+                    activeScannerInstanceRef.current.clear().catch(()=>{});
+                    activeScannerInstanceRef.current = null;
+                  }
               });
           } else {
-            // This is the scenario: render() did not return a promise.
-            console.error("Html5QrcodeScanner.render() did not return a Promise. This indicates an issue with the scanner's internal state or a library bug. Check verbose logs in the console.", html5QrcodeScanner);
+            console.error("QrBarcodeScannerDialog: Html5QrcodeScanner.render() did not return a Promise. This indicates an issue with the scanner's internal state or a library bug. Check verbose logs in the console. Scanner instance:", currentEffectScannerInstance, "Target Element:", scannerElement);
             setError("Scanner failed to start. The render method did not behave as expected. See browser console for details.");
+            // If render didn't return a promise, this instance is likely problematic. Clean it up.
+            if (activeScannerInstanceRef.current === currentEffectScannerInstance) {
+                 currentEffectScannerInstance?.clear().catch(e => console.warn("QrBarcodeScannerDialog: Clear failed for problematic instance", e));
+                 activeScannerInstanceRef.current = null;
+            }
           }
           
-        } catch (scannerInitError) { // Catches errors from 'new Html5QrcodeScanner' or synchronous errors from 'render' itself
-          console.error("Error during scanner instantiation or synchronous render call:", scannerInitError);
+        } catch (scannerInitError) { 
+          console.error("QrBarcodeScannerDialog: Error during scanner instantiation or synchronous render call:", scannerInitError);
           setError(`Scanner initialization error: ${scannerInitError instanceof Error ? scannerInitError.message : String(scannerInitError)}`);
+          if (activeScannerInstanceRef.current === currentEffectScannerInstance) { // If it was set before error
+            activeScannerInstanceRef.current = null;
+          }
+           currentEffectScannerInstance?.clear().catch(e => console.warn("QrBarcodeScannerDialog: Clear failed after init error", e));
         }
-      }, 150); // Slightly increased delay just in case
+      }, 150); 
 
     } else {
+      // 'open' is false. The cleanup function (return statement of this effect) will handle
+      // the 'currentEffectScannerInstance' if it was created by this effect run.
+      // Additionally, we ensure any globally tracked instance is also cleared.
       if (activeScannerInstanceRef.current) {
         activeScannerInstanceRef.current.clear().catch(err => {
-          // console.warn("Scanner: Failed to clear scanner instance on dialog close.", err);
+          // console.warn("Scanner: Clearing lingering active scanner instance as dialog is not open.", err);
         });
         activeScannerInstanceRef.current = null;
       }
-      if (error) setError(null);
+      if (error) setError(null); // Clear any errors when dialog is definitively closed
     }
 
+    // Cleanup function for THIS effect instance
     return () => {
       if (initTimeoutId) {
         clearTimeout(initTimeoutId);
       }
-      if (activeScannerInstanceRef.current) {
-        activeScannerInstanceRef.current.clear().catch(err => {
-          // console.warn("Scanner: Failed to clear scanner instance in effect cleanup.", err);
+      // Check if currentEffectScannerInstance was initialized by THIS effect run
+      if (currentEffectScannerInstance) {
+        currentEffectScannerInstance.clear().catch(err => {
+          // console.warn("Scanner: Failed to clear currentEffectScannerInstance in effect cleanup.", err);
         });
-        activeScannerInstanceRef.current = null;
+        // If the instance being cleaned up by this effect is the one in the ref, nullify the ref.
+        if (activeScannerInstanceRef.current === currentEffectScannerInstance) {
+          activeScannerInstanceRef.current = null;
+        }
       }
     };
   }, [open, onScanSuccess, onOpenChange, scanType]);
@@ -174,3 +198,4 @@ export function QrBarcodeScannerDialog({
     </Dialog>
   );
 }
+
