@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ChangeEvent, FormEvent } from 'react';
@@ -7,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Barcode, Camera, Loader2, ShieldCheck, ShieldAlert, ShieldX, Eye } from "lucide-react";
+import { Barcode, Camera, Loader2, ShieldCheck, ShieldAlert, ShieldX, Eye, XCircle } from "lucide-react"; // Added XCircle
 import { QrBarcodeScannerDialog } from './qr-barcode-scanner-dialog';
 import { PackagingAnalyzerDialog } from './packaging-analyzer-dialog';
 import type { PackagingAnalysisResult } from '@/types';
@@ -215,7 +216,7 @@ export function ProductVerificationTab() {
         open={showBarcodeScanner}
         onOpenChange={setShowBarcodeScanner}
         onScanSuccess={handleBarcodeScanSuccess}
-        scanType="Barcode/QR"
+        scanType="Barcode"
       />
       <PackagingAnalyzerDialog
         open={showPackagingAnalyzer}

@@ -1,7 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductRegistrationTab } from "@/components/pharma/product-registration-tab";
 import { ProductVerificationTab } from "@/components/pharma/product-verification-tab";
-import { QrCode, ShieldCheck, PackagePlus } from "lucide-react";
+import { Barcode, ShieldCheck, PackagePlus } from "lucide-react"; // Changed QrCode to Barcode
 
 export default function PharmaChainVerifierPage() {
   return (
@@ -19,7 +19,7 @@ export default function PharmaChainVerifierPage() {
       <Tabs defaultValue="register" className="w-full max-w-2xl shadow-xl rounded-lg overflow-hidden bg-card">
         <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1 h-14">
           <TabsTrigger value="register" className="h-full text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">
-            <QrCode className="mr-2 h-5 w-5" /> Register Product
+            <Barcode className="mr-2 h-5 w-5" /> Register Product {/* Changed QrCode icon to Barcode */}
           </TabsTrigger>
           <TabsTrigger value="verify" className="h-full text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md">
             <ShieldCheck className="mr-2 h-5 w-5" /> Verify Product

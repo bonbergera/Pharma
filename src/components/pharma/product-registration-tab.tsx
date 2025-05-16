@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { QrCode, Loader2, CheckCircle2, XCircle, ScanBarcode } from "lucide-react"; // Added ScanBarcode
+import { Barcode, Loader2, CheckCircle2, XCircle } from "lucide-react"; // Changed ScanBarcode to Barcode
 import { QrBarcodeScannerDialog } from './qr-barcode-scanner-dialog';
 import type { ScannedProductData } from '@/types';
 import { useToast } from "@/hooks/use-toast";
@@ -23,32 +23,38 @@ export function ProductRegistrationTab() {
   const handleScanSuccess = useCallback((decodedText: string) => {
     setShowScanner(false);
     try {
+      // Attempt to parse as JSON, common for some QR codes, less so for simple barcodes
       const parsedData: ScannedProductData | any = JSON.parse(decodedText);
       if (typeof parsedData === 'object' && parsedData !== null && parsedData.serialNumber) {
         setSerialNumber(parsedData.serialNumber);
         setName(parsedData.name || '');
         setManufacturer(parsedData.manufacturer || '');
         toast({
-          title: "Code Scanned",
-          description: "Product details populated from scanned code.",
+          title: "Barcode Scanned",
+          description: "Product details populated from scanned barcode.",
           variant: "default",
         });
-      } else if (typeof parsedData === 'string') {
+      } else if (typeof parsedData === 'string') { // If not a parsable JSON object with serialNumber, treat as plain string
          setSerialNumber(parsedData);
          toast({
-          title: "Code Scanned",
-          description: "Serial number populated from scanned code.",
+          title: "Barcode Scanned",
+          description: "Serial number populated from scanned barcode.",
           variant: "default",
         });
-      } else {
-        throw new Error("Invalid QR/Barcode code format for registration.");
+      } else { // Fallback for unexpected parsed structure
+        setSerialNumber(decodedText); // Use the raw text if parsing is weird
+        toast({
+          title: "Barcode Scanned",
+          description: "Serial number populated. Please fill other details if needed.",
+          variant: "default",
+        });
       }
     } catch (error) {
-      // If parsing fails, assume the decoded text is the serial number
+      // If JSON parsing fails, assume the decoded text is the serial number directly
       setSerialNumber(decodedText);
       toast({
-        title: "Code Scanned",
-        description: "Serial number populated. Please fill other details.",
+        title: "Barcode Scanned",
+        description: "Serial number populated. Please fill other details if needed.",
         variant: "default",
       });
     }
@@ -63,7 +69,7 @@ export function ProductRegistrationTab() {
       });
       return false;
     }
-    const serialNumberRegex = /^[A-Z0-9]{8,20}$/; // Adjusted regex for more flexibility
+    const serialNumberRegex = /^[A-Z0-9]{8,20}$/; 
     if (!serialNumberRegex.test(serialNumber)) {
       toast({
         title: "Invalid Serial Number",
@@ -100,7 +106,7 @@ export function ProductRegistrationTab() {
       <CardHeader>
         <CardTitle className="text-2xl">Register New Product</CardTitle>
         <CardDescription>
-          Fill in the product details below or scan a QR code/barcode to begin.
+          Fill in the product details below or scan a barcode to begin.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -145,7 +151,7 @@ export function ProductRegistrationTab() {
               onClick={() => setShowScanner(true)}
               className="w-full sm:w-auto text-base py-3"
             >
-              <ScanBarcode className="mr-2 h-5 w-5" /> Scan QR/Barcode
+              <Barcode className="mr-2 h-5 w-5" /> Scan Barcode
             </Button>
             <Button type="submit" disabled={isLoading} className="w-full sm:flex-1 bg-accent hover:bg-accent/90 text-accent-foreground text-base py-3">
               {isLoading ? (
@@ -162,7 +168,7 @@ export function ProductRegistrationTab() {
         open={showScanner}
         onOpenChange={setShowScanner}
         onScanSuccess={handleScanSuccess}
-        scanType="QR/Barcode"
+        scanType="Barcode"
       />
     </Card>
   );
