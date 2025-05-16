@@ -65,25 +65,35 @@ export function PackagingAnalyzerDialog({
   useEffect(() => {
     const setupCamera = async () => {
       if (currentMode === 'camera' && open) {
-        setCameraError(null); // Reset camera error at the start of an attempt
-        setHasCameraPermission(null); // Set to null to show "Initializing camera..."
+        setCameraError(null); 
+        setHasCameraPermission(null); 
         setImagePreview(null); 
         setImageDataUri(null);
 
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setCameraError("Camera API not supported by this browser. Please try uploading a file.");
+          setHasCameraPermission(false);
+          setCurrentMode('upload');
+          toast({
+            variant: 'destructive',
+            title: 'Camera Not Supported',
+            description: 'Your browser does not support camera access. Please upload a file.',
+          });
+          return;
+        }
+        
         if (videoRef.current) {
           try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            // Ensure component is still open, in camera mode, and videoRef is valid before proceeding
             if (videoRef.current && open && currentMode === 'camera') {
                 videoRef.current.srcObject = stream;
                 await videoRef.current.play();
                 setCameraStream(stream);
                 setHasCameraPermission(true);
             } else {
-                // Component state changed during getUserMedia (e.g., closed, switched mode)
-                stream.getTracks().forEach(track => track.stop()); // Clean up the acquired stream
-                if (open && currentMode === 'camera') { // Only set error if still relevant
-                    setCameraError("Camera setup was interrupted or component state changed.");
+                stream.getTracks().forEach(track => track.stop());
+                if (open && currentMode === 'camera') { 
+                    setCameraError("Camera setup was interrupted or component state changed. Try uploading a file.");
                     setHasCameraPermission(false);
                     setCurrentMode('upload');
                 }
@@ -91,7 +101,7 @@ export function PackagingAnalyzerDialog({
           } catch (err) {
             console.error("Error accessing camera:", err);
             const camErrorMsg = err instanceof Error ? err.message : "Unknown camera error.";
-            setCameraError(`Camera access denied or unavailable: ${camErrorMsg}`);
+            setCameraError(`Camera access denied or unavailable: ${camErrorMsg}. Try uploading a file.`);
             setHasCameraPermission(false);
             setCurrentMode('upload'); 
             toast({
@@ -101,7 +111,7 @@ export function PackagingAnalyzerDialog({
             });
           }
         } else {
-            // videoRef.current is null, cannot display camera
+            console.error("PackagingAnalyzerDialog: videoRef.current is null when setupCamera is called.");
             setCameraError("Camera display area not ready. Please try again or use file upload.");
             setHasCameraPermission(false);
             setCurrentMode('upload'); 
@@ -125,7 +135,7 @@ export function PackagingAnalyzerDialog({
         }
       }
     };
-  }, [open, currentMode, toast]);
+  }, [open, currentMode]); // Removed toast from dependencies
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -244,14 +254,13 @@ export function PackagingAnalyzerDialog({
                         <p className="text-primary-foreground mt-2">Initializing camera...</p>
                     </div>
                 )}
-                {hasCameraPermission === false && cameraError && ( // Show if permission explicitly false AND there's an error message
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 p-4">
-                    <XCircle className="h-12 w-12 text-destructive mb-2" />
-                    <p className="text-destructive-foreground text-center">{cameraError}</p>
+                {/* Simplified inline error: only show icon if error occurred and permission is false, rely on Alert below for full message */}
+                {hasCameraPermission === false && cameraError && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 p-4">
+                    <XCircle className="h-12 w-12 text-destructive" />
                   </div>
                 )}
               </div>
-              {/* Display specific camera error message if it exists and permission is false */}
               {hasCameraPermission === false && cameraError && (
                 <Alert variant="destructive">
                   <XCircle className="h-4 w-4" />
