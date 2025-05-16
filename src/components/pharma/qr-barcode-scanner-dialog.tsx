@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -29,11 +30,27 @@ export function QrBarcodeScannerDialog({
   onScanSuccess,
   scanType = "Code",
 }: QrBarcodeScannerDialogProps) {
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const activeScannerInstanceRef = useRef<Html5QrcodeScanner | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (open && !scannerRef.current) {
+    if (open) {
+      // Ensure the div exists before rendering.
+      const scannerElement = document.getElementById(SCANNER_ELEMENT_ID);
+      if (!scannerElement) {
+        console.warn(`Scanner element #${SCANNER_ELEMENT_ID} not found during init.`);
+        setError("Scanner UI element not ready. Please try closing and reopening the scanner.");
+        return;
+      }
+      
+      // If there's an existing scanner instance (e.g. from a previous quick open/close), try to clear it first.
+      if (activeScannerInstanceRef.current) {
+        activeScannerInstanceRef.current.clear().catch(err => {
+          console.warn("QR Scanner: Failed to clear pre-existing scanner instance.", err);
+        });
+        activeScannerInstanceRef.current = null;
+      }
+
       const formatsToSupport = [
         Html5QrcodeSupportedFormats.QR_CODE,
         Html5QrcodeSupportedFormats.CODE_128,
@@ -44,7 +61,6 @@ export function QrBarcodeScannerDialog({
         Html5QrcodeSupportedFormats.UPC_A,
         Html5QrcodeSupportedFormats.UPC_E,
         Html5QrcodeSupportedFormats.ITF,
-        // Add more formats if needed
       ];
 
       const html5QrcodeScanner = new Html5QrcodeScanner(
@@ -53,57 +69,55 @@ export function QrBarcodeScannerDialog({
           fps: 10,
           qrbox: (viewfinderWidth, viewfinderHeight) => {
             const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-            const qrboxSize = Math.floor(minEdge * 0.7);
+            const qrboxSize = Math.floor(minEdge * 0.7); // Use 70% of the smaller edge
             return { width: qrboxSize, height: qrboxSize };
           },
           rememberLastUsedCamera: true,
-          supportedScanTypes: [], // Let library decide or specify if needed
+          supportedScanTypes: [], 
           formatsToSupport: formatsToSupport,
         },
         false // verbose
       );
 
       const successCallback: QrcodeSuccessCallback = (decodedText, result) => {
-        if (scannerRef.current) {
-          scannerRef.current.clear().catch(console.error);
-          scannerRef.current = null;
-        }
+        // Scanner will be cleared in the cleanup function of this effect instance.
         onScanSuccess(decodedText);
-        onOpenChange(false);
+        onOpenChange(false); // This triggers cleanup & re-render
       };
 
       const errorCallback: QrcodeErrorCallback = (errorMessage) => {
-         // console.warn(`QR Scanner Error: ${errorMessage}`);
-         // Don't show frequent errors like "QR code not found"
-         if (!errorMessage.toLowerCase().includes("qr code parse error") && !errorMessage.toLowerCase().includes("not found")) {
-            setError(errorMessage);
+         if (!errorMessage.toLowerCase().includes("qr code parse error") && 
+             !errorMessage.toLowerCase().includes("not found") &&
+             !errorMessage.toLowerCase().includes("unable to query supported devices")) { // Filter common benign messages
+            setError(`Scanner error: ${errorMessage}`);
          }
       };
       
-      html5QrcodeScanner.render(successCallback, errorCallback);
-      scannerRef.current = html5QrcodeScanner;
-      setError(null); // Clear previous errors
+      html5QrcodeScanner.render(successCallback, errorCallback)
+        .catch(err => {
+            console.error("Error rendering scanner:", err);
+            setError(`Failed to render scanner: ${err instanceof Error ? err.message : String(err)}`);
+        });
+      activeScannerInstanceRef.current = html5QrcodeScanner;
+      setError(null); // Clear previous errors on successful render
     }
 
+    // Cleanup function for this specific effect instance
     return () => {
-      if (scannerRef.current && !open) { // Clear only when dialog is intended to close
-        scannerRef.current.clear().catch(err => {
-          // console.error("Failed to clear scanner:", err);
-          // Handle cases where element might already be removed
+      if (activeScannerInstanceRef.current) {
+        activeScannerInstanceRef.current.clear().catch(err => {
+          // This error can happen if the DOM element is already removed, e.g., on fast navigation
+          // console.warn("QR Scanner: Failed to clear scanner during cleanup. This is often benign if dialog is closing.", err);
         });
-        scannerRef.current = null;
+        activeScannerInstanceRef.current = null;
       }
     };
-  }, [open, onScanSuccess, onOpenChange]);
+  }, [open, onScanSuccess, onOpenChange, scanType]);
   
   const handleClose = () => {
-    if (scannerRef.current) {
-      scannerRef.current.clear().catch(console.error);
-      scannerRef.current = null;
-    }
+    // onOpenChange(false) will trigger the useEffect cleanup which handles clearing the scanner.
     onOpenChange(false);
   };
-
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -114,7 +128,7 @@ export function QrBarcodeScannerDialog({
             Position the {scanType.toLowerCase()} within the frame. The scan will happen automatically.
           </DialogDescription>
         </DialogHeader>
-        <div className="p-2 aspect-[4/3] w-full bg-muted">
+        <div className="p-2 aspect-[4/3] w-full bg-muted min-h-[300px]"> {/* Added min-h for stability */}
           <div id={SCANNER_ELEMENT_ID} className="w-full h-full"></div>
         </div>
         {error && <p className="p-4 text-sm text-destructive text-center">{error}</p>}
