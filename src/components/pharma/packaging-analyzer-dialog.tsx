@@ -55,48 +55,68 @@ export function PackagingAnalyzerDialog({
     setError(null);
     setCameraError(null);
     setIsLoading(false);
-    setCurrentMode('camera'); // Reset to camera mode
-    setHasCameraPermission(null); // Will re-check permission on next open/mode switch
+    setCurrentMode('camera'); 
+    setHasCameraPermission(null); 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-    // Active camera stream is cleaned up by useEffect for cameraStream
   };
   
   useEffect(() => {
     const setupCamera = async () => {
       if (currentMode === 'camera' && open) {
-        setCameraError(null);
-        setHasCameraPermission(null);
-        setImagePreview(null); // Clear previous preview when switching to camera
+        setCameraError(null); // Reset camera error at the start of an attempt
+        setHasCameraPermission(null); // Set to null to show "Initializing camera..."
+        setImagePreview(null); 
         setImageDataUri(null);
 
         if (videoRef.current) {
           try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            videoRef.current.srcObject = stream;
-            await videoRef.current.play(); // Ensure video plays
-            setCameraStream(stream);
-            setHasCameraPermission(true);
+            // Ensure component is still open, in camera mode, and videoRef is valid before proceeding
+            if (videoRef.current && open && currentMode === 'camera') {
+                videoRef.current.srcObject = stream;
+                await videoRef.current.play();
+                setCameraStream(stream);
+                setHasCameraPermission(true);
+            } else {
+                // Component state changed during getUserMedia (e.g., closed, switched mode)
+                stream.getTracks().forEach(track => track.stop()); // Clean up the acquired stream
+                if (open && currentMode === 'camera') { // Only set error if still relevant
+                    setCameraError("Camera setup was interrupted or component state changed.");
+                    setHasCameraPermission(false);
+                    setCurrentMode('upload');
+                }
+            }
           } catch (err) {
             console.error("Error accessing camera:", err);
             const camErrorMsg = err instanceof Error ? err.message : "Unknown camera error.";
             setCameraError(`Camera access denied or unavailable: ${camErrorMsg}`);
             setHasCameraPermission(false);
-            setCurrentMode('upload'); // Fallback to upload mode
+            setCurrentMode('upload'); 
             toast({
               variant: 'destructive',
               title: 'Camera Access Failed',
               description: 'Please enable camera permissions or upload a file.',
             });
           }
+        } else {
+            // videoRef.current is null, cannot display camera
+            setCameraError("Camera display area not ready. Please try again or use file upload.");
+            setHasCameraPermission(false);
+            setCurrentMode('upload'); 
+            toast({
+              variant: 'destructive',
+              title: 'Camera Initialization Error',
+              description: 'Could not initialize camera view. Switched to upload mode.',
+            });
         }
       }
     };
 
     setupCamera();
 
-    return () => { // Cleanup: stop camera stream
+    return () => { 
       if (cameraStream) {
         cameraStream.getTracks().forEach(track => track.stop());
         setCameraStream(null);
@@ -105,7 +125,7 @@ export function PackagingAnalyzerDialog({
         }
       }
     };
-  }, [open, currentMode, toast]); // Removed cameraStream from deps to avoid loop
+  }, [open, currentMode, toast]);
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -140,12 +160,11 @@ export function PackagingAnalyzerDialog({
       const context = canvas.getContext('2d');
       if (context) {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUri = canvas.toDataURL('image/jpeg', 0.9); // Use JPEG for smaller size
+        const dataUri = canvas.toDataURL('image/jpeg', 0.9); 
         setImagePreview(dataUri);
         setImageDataUri(dataUri);
         setError(null);
         setCurrentMode('preview');
-        // Stream is stopped by useEffect when currentMode changes from 'camera'
       } else {
         setError("Could not get canvas context to capture image.");
         toast({ variant: "destructive", title: "Capture Failed", description: "Could not prepare image for capture." });
@@ -167,8 +186,7 @@ export function PackagingAnalyzerDialog({
     try {
       const result: AnalyzePackagingOutput = await analyzePackaging({ photoDataUri: imageDataUri });
       onAnalysisComplete(result.authenticity);
-      onOpenChange(false); // Close dialog on success
-      // resetDialogState(); // State resets when dialog reopens due to 'open' prop change
+      onOpenChange(false); 
     } catch (err) {
       console.error("Packaging analysis error:", err);
       const errorMessage = err instanceof Error ? err.message : "An unknown error occurred during analysis.";
@@ -182,8 +200,6 @@ export function PackagingAnalyzerDialog({
   
   const handleDialogClose = () => {
     if (!isLoading) {
-      // resetDialogState(); // Reset state when dialog is manually closed.
-      // Stream cleanup is handled by useEffect on 'open' state change.
       onOpenChange(false);
     }
   };
@@ -195,7 +211,7 @@ export function PackagingAnalyzerDialog({
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
       if (!isOpen) handleDialogClose(); else onOpenChange(true);
-      if (!isOpen) resetDialogState(); // Ensure reset when closing
+      if (!isOpen) resetDialogState(); 
     }}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -222,20 +238,21 @@ export function PackagingAnalyzerDialog({
             <div className="space-y-3">
               <div className="w-full aspect-video bg-muted rounded-md overflow-hidden relative flex items-center justify-center">
                 <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-                {hasCameraPermission === false && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 p-4">
-                    <XCircle className="h-12 w-12 text-destructive mb-2" />
-                    <p className="text-destructive-foreground text-center">Camera permission denied or camera not found.</p>
-                  </div>
-                )}
-                 {hasCameraPermission === null && !cameraError && ( // Loading state for camera
+                {hasCameraPermission === null && !cameraError && ( 
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
                         <Loader2 className="h-12 w-12 text-primary-foreground animate-spin" />
                         <p className="text-primary-foreground mt-2">Initializing camera...</p>
                     </div>
                 )}
+                {hasCameraPermission === false && cameraError && ( // Show if permission explicitly false AND there's an error message
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 p-4">
+                    <XCircle className="h-12 w-12 text-destructive mb-2" />
+                    <p className="text-destructive-foreground text-center">{cameraError}</p>
+                  </div>
+                )}
               </div>
-              {cameraError && !hasCameraPermission && ( // Show specific camera error if permission is false
+              {/* Display specific camera error message if it exists and permission is false */}
+              {hasCameraPermission === false && cameraError && (
                 <Alert variant="destructive">
                   <XCircle className="h-4 w-4" />
                   <AlertTitle>Camera Error</AlertTitle>
@@ -245,7 +262,7 @@ export function PackagingAnalyzerDialog({
               <Button 
                 onClick={handleCaptureImage} 
                 className="w-full"
-                disabled={isLoading || !hasCameraPermission || !cameraStream}
+                disabled={isLoading || hasCameraPermission !== true || !cameraStream}
               >
                 <Camera className="mr-2 h-4 w-4" /> Capture Image
               </Button>
@@ -310,7 +327,7 @@ export function PackagingAnalyzerDialog({
             </div>
           )}
           
-          {error && ( // General error unrelated to camera init
+          {error && ( 
             <Alert variant="destructive" className="mt-2">
               <XCircle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
@@ -340,3 +357,4 @@ export function PackagingAnalyzerDialog({
     </Dialog>
   );
 }
+
