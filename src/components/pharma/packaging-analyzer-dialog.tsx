@@ -55,19 +55,19 @@ export function PackagingAnalyzerDialog({
     setError(null);
     setCameraError(null);
     setIsLoading(false);
-    setCurrentMode('camera'); 
-    setHasCameraPermission(null); 
+    setCurrentMode('camera');
+    setHasCameraPermission(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
-  
+
   useEffect(() => {
     const setupCamera = async () => {
       if (currentMode === 'camera' && open) {
-        setCameraError(null); 
-        setHasCameraPermission(null); 
-        setImagePreview(null); 
+        setCameraError(null);
+        setHasCameraPermission(null);
+        setImagePreview(null);
         setImageDataUri(null);
 
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -81,18 +81,29 @@ export function PackagingAnalyzerDialog({
           });
           return;
         }
-        
+
         if (videoRef.current) {
           try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
             if (videoRef.current && open && currentMode === 'camera') {
                 videoRef.current.srcObject = stream;
-                await videoRef.current.play();
+                await videoRef.current.play().catch(playError => {
+                  console.error("Error playing video stream:", playError);
+                  setCameraError(`Could not play camera stream: ${playError.message}. Try uploading a file.`);
+                  setHasCameraPermission(false);
+                  setCurrentMode('upload');
+                  stream.getTracks().forEach(track => track.stop()); // Stop stream if play fails
+                   toast({
+                    variant: 'destructive',
+                    title: 'Camera Playback Error',
+                    description: 'Could not start camera video playback.',
+                  });
+                });
                 setCameraStream(stream);
                 setHasCameraPermission(true);
             } else {
                 stream.getTracks().forEach(track => track.stop());
-                if (open && currentMode === 'camera') { 
+                if (open && currentMode === 'camera') {
                     setCameraError("Camera setup was interrupted or component state changed. Try uploading a file.");
                     setHasCameraPermission(false);
                     setCurrentMode('upload');
@@ -103,7 +114,7 @@ export function PackagingAnalyzerDialog({
             const camErrorMsg = err instanceof Error ? err.message : "Unknown camera error.";
             setCameraError(`Camera access denied or unavailable: ${camErrorMsg}. Try uploading a file.`);
             setHasCameraPermission(false);
-            setCurrentMode('upload'); 
+            setCurrentMode('upload');
             toast({
               variant: 'destructive',
               title: 'Camera Access Failed',
@@ -114,7 +125,7 @@ export function PackagingAnalyzerDialog({
             console.error("PackagingAnalyzerDialog: videoRef.current is null when setupCamera is called.");
             setCameraError("Camera display area not ready. Please try again or use file upload.");
             setHasCameraPermission(false);
-            setCurrentMode('upload'); 
+            setCurrentMode('upload');
             toast({
               variant: 'destructive',
               title: 'Camera Initialization Error',
@@ -124,9 +135,11 @@ export function PackagingAnalyzerDialog({
       }
     };
 
-    setupCamera();
+    if (open) { // Only attempt setup if dialog is open
+        setupCamera();
+    }
 
-    return () => { 
+    return () => {
       if (cameraStream) {
         cameraStream.getTracks().forEach(track => track.stop());
         setCameraStream(null);
@@ -135,7 +148,8 @@ export function PackagingAnalyzerDialog({
         }
       }
     };
-  }, [open, currentMode]); // Removed toast from dependencies
+  }, [open, currentMode]);
+
 
   const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -170,7 +184,7 @@ export function PackagingAnalyzerDialog({
       const context = canvas.getContext('2d');
       if (context) {
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const dataUri = canvas.toDataURL('image/jpeg', 0.9); 
+        const dataUri = canvas.toDataURL('image/jpeg', 0.9);
         setImagePreview(dataUri);
         setImageDataUri(dataUri);
         setError(null);
@@ -196,7 +210,7 @@ export function PackagingAnalyzerDialog({
     try {
       const result: AnalyzePackagingOutput = await analyzePackaging({ photoDataUri: imageDataUri });
       onAnalysisComplete(result.authenticity);
-      onOpenChange(false); 
+      onOpenChange(false);
     } catch (err) {
       console.error("Packaging analysis error:", err);
       const errorMessage = err instanceof Error ? err.message : "An unknown error occurred during analysis.";
@@ -207,21 +221,35 @@ export function PackagingAnalyzerDialog({
       setParentLoading(false);
     }
   };
-  
+
   const handleDialogClose = () => {
     if (!isLoading) {
       onOpenChange(false);
     }
   };
-  
+
   const triggerFileInput = () => {
     fileInputRef.current?.click();
   };
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
-      if (!isOpen) handleDialogClose(); else onOpenChange(true);
-      if (!isOpen) resetDialogState(); 
+      if (!isOpen) {
+        handleDialogClose();
+        resetDialogState(); // Reset state when dialog is fully closed
+      } else {
+        onOpenChange(true); // Ensure parent knows it's open
+        // Reset state when opening, ensuring camera mode is default
+        // This is important if the dialog was previously in upload/preview
+        if (currentMode !== 'camera') {
+           resetDialogState(); // this will set currentMode to 'camera'
+        } else {
+            // If already in camera mode, explicitly trigger camera setup or permission check again
+            // This helps if permissions were changed while dialog was closed
+            setHasCameraPermission(null); 
+            setCameraError(null);
+        }
+      }
     }}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
@@ -232,7 +260,7 @@ export function PackagingAnalyzerDialog({
             {currentMode === 'preview' && 'Review the captured/uploaded image below.'}
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-4 my-4">
           <canvas ref={canvasRef} className="hidden"></canvas>
           <Input
@@ -244,89 +272,99 @@ export function PackagingAnalyzerDialog({
             className="hidden"
           />
 
-          {currentMode === 'camera' && (
-            <div className="space-y-3">
-              <div className="w-full aspect-video bg-muted rounded-md overflow-hidden relative flex items-center justify-center">
-                <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-                {hasCameraPermission === null && !cameraError && ( 
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
-                        <Loader2 className="h-12 w-12 text-primary-foreground animate-spin" />
-                        <p className="text-primary-foreground mt-2">Initializing camera...</p>
-                    </div>
-                )}
-                {/* Simplified inline error: only show icon if error occurred and permission is false, rely on Alert below for full message */}
-                {hasCameraPermission === false && cameraError && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 p-4">
-                    <XCircle className="h-12 w-12 text-destructive" />
+          {/* Camera Mode View - visibility controlled by CSS */}
+          <div className={`${currentMode === 'camera' ? 'block' : 'hidden'} space-y-3`}>
+            <div className="w-full aspect-video bg-muted rounded-md overflow-hidden relative flex items-center justify-center">
+              {/* Video element is always in the DOM if dialog is open, for ref stability */}
+              <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+              {/* Overlays for loading/error states, shown conditionally */}
+              {hasCameraPermission === null && !cameraError && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
+                      <Loader2 className="h-12 w-12 text-primary-foreground animate-spin" />
+                      <p className="text-primary-foreground mt-2">Initializing camera...</p>
                   </div>
-                )}
-              </div>
-              {hasCameraPermission === false && cameraError && (
-                <Alert variant="destructive">
-                  <XCircle className="h-4 w-4" />
-                  <AlertTitle>Camera Error</AlertTitle>
-                  <AlertDescription>{cameraError}</AlertDescription>
-                </Alert>
               )}
-              <Button 
-                onClick={handleCaptureImage} 
-                className="w-full"
-                disabled={isLoading || hasCameraPermission !== true || !cameraStream}
-              >
-                <Camera className="mr-2 h-4 w-4" /> Capture Image
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setCurrentMode('upload')} 
-                className="w-full"
-                disabled={isLoading}
-              >
-                <FileUp className="mr-2 h-4 w-4" /> Switch to File Upload
-              </Button>
-            </div>
-          )}
-
-          {currentMode === 'upload' && (
-             <div className="space-y-3">
-                <div 
-                    className="mt-4 p-8 border-2 border-dashed rounded-md flex flex-col items-center justify-center aspect-video cursor-pointer hover:border-primary transition-colors bg-muted/50"
-                    onClick={triggerFileInput}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && triggerFileInput()}
-                >
-                    <Upload className="h-12 w-12 text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground">Click to upload image</p>
-                    <p className="text-xs text-muted-foreground mt-1">Max 5MB. PNG, JPG, WEBP.</p>
+              {hasCameraPermission === false && cameraError && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 p-4">
+                  <XCircle className="h-12 w-12 text-destructive" />
                 </div>
-                <Button 
-                    variant="outline" 
-                    onClick={() => setCurrentMode('camera')} 
-                    className="w-full"
-                    disabled={isLoading}
-                >
-                    <Video className="mr-2 h-4 w-4" /> Switch to Camera Capture
-                </Button>
-             </div>
-          )}
+              )}
+            </div>
+            {hasCameraPermission === false && cameraError && (
+              <Alert variant="destructive">
+                <XCircle className="h-4 w-4" />
+                <AlertTitle>Camera Error</AlertTitle>
+                <AlertDescription>{cameraError}</AlertDescription>
+              </Alert>
+            )}
+            <Button
+              onClick={handleCaptureImage}
+              className="w-full"
+              disabled={isLoading || hasCameraPermission !== true || !cameraStream}
+            >
+              <Camera className="mr-2 h-4 w-4" /> Capture Image
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setCurrentMode('upload')}
+              className="w-full"
+              disabled={isLoading}
+            >
+              <FileUp className="mr-2 h-4 w-4" /> Switch to File Upload
+            </Button>
+          </div>
 
+          {/* Upload Mode View - visibility controlled by CSS */}
+          <div className={`${currentMode === 'upload' ? 'block' : 'hidden'} space-y-3`}>
+              <div
+                  className="mt-4 p-8 border-2 border-dashed rounded-md flex flex-col items-center justify-center aspect-video cursor-pointer hover:border-primary transition-colors bg-muted/50"
+                  onClick={triggerFileInput}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && triggerFileInput()}
+              >
+                  <Upload className="h-12 w-12 text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground">Click to upload image</p>
+                  <p className="text-xs text-muted-foreground mt-1">Max 5MB. PNG, JPG, WEBP.</p>
+              </div>
+              <Button
+                  variant="outline"
+                  onClick={() => {
+                    setCurrentMode('camera');
+                    // When switching back to camera, explicitly reset camera state to trigger re-init
+                    setHasCameraPermission(null);
+                    setCameraError(null);
+                  }}
+                  className="w-full"
+                  disabled={isLoading}
+              >
+                  <Video className="mr-2 h-4 w-4" /> Switch to Camera Capture
+              </Button>
+           </div>
+
+          {/* Preview Mode View - conditional rendering as before, as it depends on imagePreview */}
           {currentMode === 'preview' && imagePreview && (
             <div className="space-y-3">
               <div className="mt-4 border rounded-md overflow-hidden aspect-video relative w-full bg-muted">
                 <Image src={imagePreview} alt="Packaging Preview" layout="fill" objectFit="contain" />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setCurrentMode('camera')} 
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setCurrentMode('camera');
+                    // When going back to camera for retake, explicitly reset camera state
+                    setHasCameraPermission(null);
+                    setCameraError(null);
+                  }}
                   className="w-full"
                   disabled={isLoading}
                 >
                   <RefreshCcw className="mr-2 h-4 w-4" /> Retake/Recapture
                 </Button>
-                 <Button 
-                  variant="outline" 
-                  onClick={() => setCurrentMode('upload')} 
+                 <Button
+                  variant="outline"
+                  onClick={() => setCurrentMode('upload')}
                   className="w-full"
                   disabled={isLoading}
                 >
@@ -335,8 +373,8 @@ export function PackagingAnalyzerDialog({
               </div>
             </div>
           )}
-          
-          {error && ( 
+
+          {error && (
             <Alert variant="destructive" className="mt-2">
               <XCircle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
@@ -349,9 +387,9 @@ export function PackagingAnalyzerDialog({
           <Button variant="outline" onClick={handleDialogClose} disabled={isLoading}>
             <X className="mr-2 h-4 w-4" /> Cancel
           </Button>
-          <Button 
-            onClick={handleAnalyze} 
-            disabled={!imageDataUri || isLoading || currentMode === 'camera'} 
+          <Button
+            onClick={handleAnalyze}
+            disabled={!imageDataUri || isLoading || currentMode === 'camera'}
             className="bg-accent hover:bg-accent/90 text-accent-foreground"
           >
             {isLoading ? (
@@ -366,4 +404,3 @@ export function PackagingAnalyzerDialog({
     </Dialog>
   );
 }
-
