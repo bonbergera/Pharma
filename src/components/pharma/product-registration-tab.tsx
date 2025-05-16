@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ChangeEvent, FormEvent } from 'react';
@@ -6,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { QrCode, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { QrCode, Loader2, CheckCircle2, XCircle, ScanBarcode } from "lucide-react"; // Added ScanBarcode
 import { QrBarcodeScannerDialog } from './qr-barcode-scanner-dialog';
 import type { ScannedProductData } from '@/types';
 import { useToast } from "@/hooks/use-toast";
@@ -28,25 +29,25 @@ export function ProductRegistrationTab() {
         setName(parsedData.name || '');
         setManufacturer(parsedData.manufacturer || '');
         toast({
-          title: "QR Code Scanned",
-          description: "Product details populated from QR code.",
+          title: "Code Scanned",
+          description: "Product details populated from scanned code.",
           variant: "default",
         });
       } else if (typeof parsedData === 'string') {
          setSerialNumber(parsedData);
          toast({
-          title: "QR Code Scanned",
-          description: "Serial number populated from QR code.",
+          title: "Code Scanned",
+          description: "Serial number populated from scanned code.",
           variant: "default",
         });
       } else {
-        throw new Error("Invalid QR code format for registration.");
+        throw new Error("Invalid QR/Barcode code format for registration.");
       }
     } catch (error) {
       // If parsing fails, assume the decoded text is the serial number
       setSerialNumber(decodedText);
       toast({
-        title: "QR Code Scanned",
+        title: "Code Scanned",
         description: "Serial number populated. Please fill other details.",
         variant: "default",
       });
@@ -99,7 +100,7 @@ export function ProductRegistrationTab() {
       <CardHeader>
         <CardTitle className="text-2xl">Register New Product</CardTitle>
         <CardDescription>
-          Fill in the product details below or scan a QR code to begin.
+          Fill in the product details below or scan a QR code/barcode to begin.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -144,7 +145,7 @@ export function ProductRegistrationTab() {
               onClick={() => setShowScanner(true)}
               className="w-full sm:w-auto text-base py-3"
             >
-              <QrCode className="mr-2 h-5 w-5" /> Scan QR Code
+              <ScanBarcode className="mr-2 h-5 w-5" /> Scan QR/Barcode
             </Button>
             <Button type="submit" disabled={isLoading} className="w-full sm:flex-1 bg-accent hover:bg-accent/90 text-accent-foreground text-base py-3">
               {isLoading ? (
@@ -161,7 +162,7 @@ export function ProductRegistrationTab() {
         open={showScanner}
         onOpenChange={setShowScanner}
         onScanSuccess={handleScanSuccess}
-        scanType="QR Code"
+        scanType="QR/Barcode"
       />
     </Card>
   );
