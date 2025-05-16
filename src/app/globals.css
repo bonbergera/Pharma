@@ -3,36 +3,49 @@
 @tailwind utilities;
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+    --background: 130 30% 95%; /* Light Green: #EBF3EB */
+    --foreground: 149 25% 20%; /* Dark Green (for text on light green) */
+
+    --card: 130 25% 97%; /* Slightly off-white with green hint */
+    --card-foreground: 149 25% 20%;
+
+    --popover: 130 25% 97%;
+    --popover-foreground: 149 25% 20%;
+
+    --primary: 149 38% 32%; /* Forest Green: #33704B */
+    --primary-foreground: 0 0% 100%; /* White */
+
+    --secondary: 130 20% 90%; /* Muted Green */
+    --secondary-foreground: 149 25% 25%;
+
+    --muted: 130 20% 93%;
+    --muted-foreground: 149 20% 45%; /* More desaturated and lighter green */
+
+    --accent: 47 88% 44%; /* Soft Yellow: #D4AC0D */
+    --accent-foreground: 47 50% 10%; /* Dark Brown/Black (for text on yellow) */
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+
+    --border: 130 20% 88%; /* Slightly darker shade of background */
+    --input: 130 20% 88%;
+    --ring: 149 38% 32%; /* Primary color for rings */
+
     --radius: 0.5rem;
+
+    /* Chart colors (can be adjusted if charts are used) */
+    --chart-1: 149 70% 50%;
+    --chart-2: 47 80% 60%;
+    --chart-3: 130 60% 70%;
+    --chart-4: 200 70% 55%;
+    --chart-5: 30 80% 65%;
+    
+    /* Sidebar specific colors (can be kept as is or themed if sidebar is used) */
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
@@ -42,31 +55,43 @@ body {
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    /* Define dark theme variables if needed, for now keeping it consistent with light or default dark */
+    --background: 149 25% 15%; /* Dark Slate Green */
+    --foreground: 130 30% 90%; /* Light Muted Green */
+
+    --card: 149 25% 20%;
+    --card-foreground: 130 30% 90%;
+
+    --popover: 149 25% 20%;
+    --popover-foreground: 130 30% 90%;
+
+    --primary: 149 45% 45%; /* Brighter Forest Green for dark mode */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 149 20% 25%;
+    --secondary-foreground: 130 30% 85%;
+
+    --muted: 149 20% 25%;
+    --muted-foreground: 130 25% 65%;
+
+    --accent: 47 75% 55%; /* Slightly brighter Yellow for dark mode */
+    --accent-foreground: 47 80% 15%;
+
+    --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+
+    --border: 149 20% 30%;
+    --input: 149 20% 30%;
+    --ring: 149 45% 45%;
+    
+    --chart-1: 149 60% 60%;
+    --chart-2: 47 70% 70%;
+    --chart-3: 130 50% 80%;
+    --chart-4: 200 60% 65%;
+    --chart-5: 30 70% 75%;
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -84,5 +109,6 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    min-height: 100vh;
   }
 }
