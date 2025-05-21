@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Barcode, Loader2, CheckCircle2, XCircle } from "lucide-react"; // Changed ScanBarcode to Barcode
+import { Barcode, Loader2, CheckCircle2, XCircle, ScanBarcode } from "lucide-react";
 import { QrBarcodeScannerDialog } from './qr-barcode-scanner-dialog';
 import type { ScannedProductData } from '@/types';
 import { useToast } from "@/hooks/use-toast";
@@ -23,10 +23,9 @@ export function ProductRegistrationTab() {
   const handleScanSuccess = useCallback((decodedText: string) => {
     setShowScanner(false);
     try {
-      // Attempt to parse as JSON, common for some QR codes, less so for simple barcodes
       const parsedData: ScannedProductData | any = JSON.parse(decodedText);
       if (typeof parsedData === 'object' && parsedData !== null && parsedData.serialNumber) {
-        setSerialNumber(parsedData.serialNumber);
+        setSerialNumber(parsedData.serialNumber.toUpperCase());
         setName(parsedData.name || '');
         setManufacturer(parsedData.manufacturer || '');
         toast({
@@ -34,15 +33,15 @@ export function ProductRegistrationTab() {
           description: "Product details populated from scanned barcode.",
           variant: "default",
         });
-      } else if (typeof parsedData === 'string') { // If not a parsable JSON object with serialNumber, treat as plain string
-         setSerialNumber(parsedData);
+      } else if (typeof parsedData === 'string') {
+         setSerialNumber(parsedData.toUpperCase());
          toast({
           title: "Barcode Scanned",
           description: "Serial number populated from scanned barcode.",
           variant: "default",
         });
-      } else { // Fallback for unexpected parsed structure
-        setSerialNumber(decodedText); // Use the raw text if parsing is weird
+      } else { 
+        setSerialNumber(decodedText.toUpperCase());
         toast({
           title: "Barcode Scanned",
           description: "Serial number populated. Please fill other details if needed.",
@@ -50,8 +49,7 @@ export function ProductRegistrationTab() {
         });
       }
     } catch (error) {
-      // If JSON parsing fails, assume the decoded text is the serial number directly
-      setSerialNumber(decodedText);
+      setSerialNumber(decodedText.toUpperCase());
       toast({
         title: "Barcode Scanned",
         description: "Serial number populated. Please fill other details if needed.",
@@ -73,7 +71,7 @@ export function ProductRegistrationTab() {
     if (!serialNumberRegex.test(serialNumber)) {
       toast({
         title: "Invalid Serial Number",
-        description: "Serial number must be 8-20 alphanumeric characters.",
+        description: "Serial number must be 8-20 uppercase alphanumeric characters.",
         variant: "destructive",
       });
       return false;
@@ -86,19 +84,46 @@ export function ProductRegistrationTab() {
     if (!validateForm()) return;
 
     setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsLoading(false);
+    
+    try {
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ serialNumber, name, manufacturer }),
+      });
 
-    // Mock success
-    toast({
-      title: "Product Registered",
-      description: `${name} (SN: ${serialNumber}) has been successfully registered.`,
-      action: <CheckCircle2 className="text-green-500" />,
-    });
-    setSerialNumber('');
-    setName('');
-    setManufacturer('');
+      const result = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Product Registered",
+          description: `${result.product.name} (SN: ${result.product.serialNumber}) has been successfully registered.`,
+          action: <CheckCircle2 className="text-green-500" />,
+        });
+        setSerialNumber('');
+        setName('');
+        setManufacturer('');
+      } else {
+        toast({
+          title: "Registration Failed",
+          description: result.message || "An error occurred during registration.",
+          variant: "destructive",
+          action: <XCircle className="text-red-500" />,
+        });
+      }
+    } catch (error) {
+      console.error("Registration submission error:", error);
+      toast({
+        title: "Registration Error",
+        description: "Could not connect to the server. Please try again later.",
+        variant: "destructive",
+        action: <XCircle className="text-red-500" />,
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -106,7 +131,7 @@ export function ProductRegistrationTab() {
       <CardHeader>
         <CardTitle className="text-2xl">Register New Product</CardTitle>
         <CardDescription>
-          Fill in the product details below or scan a barcode to begin.
+          Fill in the product details below or scan a barcode to begin. Ensure serial number is 8-20 uppercase alphanumeric characters.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -120,6 +145,8 @@ export function ProductRegistrationTab() {
               onChange={(e: ChangeEvent<HTMLInputElement>) => setSerialNumber(e.target.value.toUpperCase())}
               required
               className="text-base"
+              pattern="[A-Z0-9]{8,20}"
+              title="Serial number must be 8-20 uppercase alphanumeric characters."
             />
           </div>
           <div className="space-y-2">
@@ -151,7 +178,7 @@ export function ProductRegistrationTab() {
               onClick={() => setShowScanner(true)}
               className="w-full sm:w-auto text-base py-3"
             >
-              <Barcode className="mr-2 h-5 w-5" /> Scan Barcode
+              <ScanBarcode className="mr-2 h-5 w-5" /> Scan Barcode
             </Button>
             <Button type="submit" disabled={isLoading} className="w-full sm:flex-1 bg-accent hover:bg-accent/90 text-accent-foreground text-base py-3">
               {isLoading ? (
