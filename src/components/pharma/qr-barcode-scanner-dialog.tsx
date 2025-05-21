@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { 
   Html5QrcodeScanner, 
   Html5QrcodeSupportedFormats,
-  Html5QrcodeScanType // Imported
+  Html5QrcodeScanType 
 } from 'html5-qrcode';
 import type { QrcodeSuccessCallback, QrcodeErrorCallback } from 'html5-qrcode/esm/core';
 import { X } from 'lucide-react';
@@ -42,12 +42,11 @@ export function QrBarcodeScannerDialog({
     let initTimeoutId: NodeJS.Timeout | null = null;
 
     if (open) {
-      // Delay initialization slightly to ensure DOM is ready
       initTimeoutId = setTimeout(() => {
-        // Guard against race condition: if dialog was closed quickly
         if (!open) {
           return;
         }
+        setError(null); 
 
         if (activeScannerInstanceRef.current) {
           activeScannerInstanceRef.current.clear().catch(err => {
@@ -63,8 +62,6 @@ export function QrBarcodeScannerDialog({
           return;
         }
         
-        setError(null); // Clear previous errors
-
         const formatsToSupport = [
           Html5QrcodeSupportedFormats.CODE_128,
           Html5QrcodeSupportedFormats.CODE_39,
@@ -74,7 +71,6 @@ export function QrBarcodeScannerDialog({
           Html5QrcodeSupportedFormats.UPC_A,
           Html5QrcodeSupportedFormats.UPC_E,
           Html5QrcodeSupportedFormats.ITF,
-          // Html5QrcodeSupportedFormats.QR_CODE, // Keeping this commented as per previous request to focus on barcodes
         ];
 
         try {
@@ -83,15 +79,25 @@ export function QrBarcodeScannerDialog({
             {
               fps: 10,
               qrbox: (viewfinderWidth, viewfinderHeight) => {
-                const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                const qrboxSize = Math.floor(minEdge * 0.7);
+                // Ensure viewfinder dimensions are positive
+                const vw = Math.max(1, viewfinderWidth);
+                const vh = Math.max(1, viewfinderHeight);
+                const minEdge = Math.min(vw, vh);
+                let qrboxSize = Math.floor(minEdge * 0.7);
+                // Ensure qrboxSize is at least a certain minimum (e.g., 100px) but not larger than minEdge
+                qrboxSize = Math.max(100, qrboxSize); 
+                qrboxSize = Math.min(qrboxSize, minEdge); // Cap at minEdge if 100 is too large
+                
+                if (qrboxSize === 0) { // Final fallback if all else leads to zero
+                  return { width: Math.min(250, vw), height: Math.min(250, vh) };
+                }
                 return { width: qrboxSize, height: qrboxSize };
               },
               rememberLastUsedCamera: true,
-              supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA], // Explicitly set scan type
+              supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
               formatsToSupport: formatsToSupport,
             },
-            true // ENABLE VERBOSE LOGGING (was third argument)
+            true 
           );
         } catch (scannerInitError) {
           console.error("QrBarcodeScannerDialog: Error during Html5QrcodeScanner instantiation:", scannerInitError);
@@ -102,42 +108,34 @@ export function QrBarcodeScannerDialog({
         activeScannerInstanceRef.current = currentEffectScannerInstance;
 
         const successCallback: QrcodeSuccessCallback = (decodedText, result) => {
-          // Ensure the callback is for the currently active scanner and dialog is still open
           if (activeScannerInstanceRef.current === currentEffectScannerInstance && open) { 
             onScanSuccess(decodedText);
-            onOpenChange(false); // Close dialog on success
+            onOpenChange(false); 
           }
         };
 
         const localErrorCallback: QrcodeErrorCallback = (errorMessage) => {
-           // Filter out common "not found" messages during scanning to reduce console noise
-           // but log other potential runtime errors from the scanner.
            if (!errorMessage.toLowerCase().includes("not found") &&
-               !errorMessage.toLowerCase().includes("unable to query supported devices") && // Often a transient issue or permission denial start
-               !errorMessage.toLowerCase().includes("undefined or null")) { // Catches some generic library internal errors
+               !errorMessage.toLowerCase().includes("unable to query supported devices") && 
+               !errorMessage.toLowerCase().includes("undefined or null")) { 
               // console.warn("Scanner runtime notice (filtered):", errorMessage);
            }
         };
           
-        // Attempt to render the scanner
         try {
           const renderPromise = currentEffectScannerInstance.render(successCallback, localErrorCallback);
 
-          // CRITICAL CHECK: html5-qrcode's render() method SHOULD return a Promise.
-          // If it doesn't, something is fundamentally wrong with the scanner's state or initialization.
           if (renderPromise && typeof renderPromise.then === 'function') {
             renderPromise
               .catch(renderPromiseError => {
                   console.error("QrBarcodeScannerDialog: Error from scanner.render() Promise:", renderPromiseError);
                   setError(`Scanner render failed: ${renderPromiseError instanceof Error ? renderPromiseError.message : String(renderPromiseError)}`);
                   if (activeScannerInstanceRef.current === currentEffectScannerInstance) {
-                    // Attempt to clear the problematic instance
                     activeScannerInstanceRef.current?.clear().catch(()=>{});
                     activeScannerInstanceRef.current = null;
                   }
               });
           } else {
-            // This is the branch that logs your specific error
             console.error("QrBarcodeScannerDialog: Html5QrcodeScanner.render() did not return a Promise. This indicates an issue with the scanner's internal state or a library bug. Check verbose logs in the console. Scanner instance:", currentEffectScannerInstance, "Target Element:", scannerElement);
             setError("Scanner failed to start. The render method did not behave as expected. See browser console for details.");
             if (activeScannerInstanceRef.current === currentEffectScannerInstance) {
@@ -146,7 +144,6 @@ export function QrBarcodeScannerDialog({
             }
           }
         } catch (renderError) {
-           // Catch synchronous errors from the render call itself
            console.error("QrBarcodeScannerDialog: Synchronous error from scanner.render() call:", renderError);
            setError(`Scanner render call failed synchronously: ${renderError instanceof Error ? renderError.message : String(renderError)}`);
            if (activeScannerInstanceRef.current === currentEffectScannerInstance) {
@@ -154,26 +151,22 @@ export function QrBarcodeScannerDialog({
              activeScannerInstanceRef.current = null;
            }
         }
-      }, 150); // Delay to allow DOM to settle
+      }, 150); 
 
     } else {
-      // Dialog is not open, ensure any active scanner is cleared
       if (activeScannerInstanceRef.current) {
         activeScannerInstanceRef.current.clear().catch(err => {
           // console.warn("Scanner: Clearing lingering active scanner instance as dialog is not open.", err);
         });
         activeScannerInstanceRef.current = null;
       }
-      if (error) setError(null); // Clear error when dialog is closed
+      if (error) setError(null); 
     }
 
-    // Cleanup function for the useEffect hook
     return () => {
       if (initTimeoutId) {
         clearTimeout(initTimeoutId);
       }
-      // This check is important: only clear the instance this effect was responsible for,
-      // and only if it's still the active one.
       if (currentEffectScannerInstance) {
         currentEffectScannerInstance.clear().catch(err => {
           // console.warn("Scanner: Failed to clear currentEffectScannerInstance in effect cleanup.", err);
@@ -183,7 +176,7 @@ export function QrBarcodeScannerDialog({
         }
       }
     };
-  }, [open, onScanSuccess, onOpenChange, scanType]); // Dependencies for the effect
+  }, [open, onScanSuccess, onOpenChange, scanType]); 
   
   const handleClose = () => {
     onOpenChange(false);
@@ -198,7 +191,6 @@ export function QrBarcodeScannerDialog({
             Position the {scanType.toLowerCase()} within the frame. The scan will happen automatically.
           </DialogDescription>
         </DialogHeader>
-        {/* The div for the scanner UI. Must have a defined size for the library to work. */}
         <div className="p-2 aspect-[4/3] w-full bg-muted min-h-[300px]">
           <div id={SCANNER_ELEMENT_ID} className="w-full h-full"></div>
         </div>
