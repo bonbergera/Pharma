@@ -123,24 +123,14 @@ export function QrBarcodeScannerDialog({
         };
           
         try {
-          const renderPromise = currentEffectScannerInstance.render(successCallback, localErrorCallback);
-
-          if (renderPromise && typeof renderPromise.then === 'function') {
-            renderPromise
-              .catch(renderPromiseError => {
-                  console.error("QrBarcodeScannerDialog: Error from scanner.render() Promise:", renderPromiseError);
-                  setError(`Scanner render failed: ${renderPromiseError instanceof Error ? renderPromiseError.message : String(renderPromiseError)}`);
-                  if (activeScannerInstanceRef.current === currentEffectScannerInstance) {
-                    activeScannerInstanceRef.current?.clear().catch(()=>{});
-                    activeScannerInstanceRef.current = null;
-                  }
-              });
-          } else {
-            console.error("QrBarcodeScannerDialog: Html5QrcodeScanner.render() did not return a Promise. This indicates an issue with the scanner's internal state or a library bug. Check verbose logs in the console. Scanner instance:", currentEffectScannerInstance, "Target Element:", scannerElement);
-            setError("Scanner failed to start. The render method did not behave as expected. See browser console for details.");
+          try {
+            currentEffectScannerInstance.render(successCallback, localErrorCallback);
+          } catch (renderPromiseError) {
+            console.error("QrBarcodeScannerDialog: Error from scanner.render() call:", renderPromiseError);
+            setError(`Scanner render failed: ${renderPromiseError instanceof Error ? renderPromiseError.message : String(renderPromiseError)}`);
             if (activeScannerInstanceRef.current === currentEffectScannerInstance) {
-                 currentEffectScannerInstance?.clear().catch(e => console.warn("QrBarcodeScannerDialog: Clear failed for problematic instance after non-promise return from render", e));
-                 activeScannerInstanceRef.current = null;
+              activeScannerInstanceRef.current?.clear().catch(()=>{});
+              activeScannerInstanceRef.current = null;
             }
           }
         } catch (renderError) {
