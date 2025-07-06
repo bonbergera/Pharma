@@ -2,7 +2,7 @@
 
 ## Core Features:
 
-- QR Code Registration: Implement a QR code scanning feature on the product registration form to automatically populate form fields upon successful scan. This feature will use the device's camera to scan QR codes containing product information.
+- Barcode Registration: Implement a barcode scanning feature on the product registration form to automatically populate form fields upon successful scan. This feature will use the device's camera to scan barcodes containing product information.
 - Barcode Verification: Incorporate a barcode scanning feature in the product verification section to allow users to quickly verify if a product is registered in the system. This will use the device's camera to scan barcodes and check against the database.
 - AI Packaging Analysis: Integrate a camera scan feature that analyzes the product packaging for authenticity indicators. Use an AI model trained to detect counterfeit packaging elements and alert the user to potential issues. The AI will function as a tool, and its result may or may not influence the overall application output.
 - Interactive UI Design: Implement an interactive and visually appealing user interface that guides users through the product registration and verification processes, using animations and clear visual cues.

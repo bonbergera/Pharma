@@ -1,97 +1,104 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind base, components, and utilities imports for styling */  
+@tailwind base;  
+@tailwind components;  
+@tailwind utilities;  
 
-body {
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-}
+/* Set the default font family for the entire body */  
+body {  
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;  
+}  
 
-@layer base {
-  :root {
-    --background: 130 30% 95%; /* Light Green: #EBF3EB */
-    --foreground: 149 25% 20%; /* Dark Green (for text on light green) */
+/* Define custom CSS variables within the base layer for theming */  
+@layer base {  
+  :root {  
+    /* Light theme colors using HSL values (Hue, Saturation, Lightness) */  
 
-    --card: 130 25% 97%; /* Slightly off-white with green hint */
-    --card-foreground: 149 25% 20%;
+    --background: 130 30% 95%; /* Light green background color (#EBF3EB) */  
+    --foreground: 149 25% 20%; /* Dark green for text on light green background */  
 
-    --popover: 130 25% 97%;
-    --popover-foreground: 149 25% 20%;
+    --card: 130 25% 97%; /* Slightly off-white with green tint for card backgrounds */  
+    --card-foreground: 149 25% 20%;  
 
-    --primary: 149 38% 32%; /* Forest Green: #33704B */
-    --primary-foreground: 0 0% 100%; /* White */
+    --popover: 130 25% 97%; /* Popover background similar to card */  
+    --popover-foreground: 149 25% 20%;  
 
-    --secondary: 130 20% 90%; /* Muted Green */
-    --secondary-foreground: 149 25% 25%;
+    --primary: 149 38% 32%; /* Forest green as primary accent color (#33704B) */  
+    --primary-foreground: 0 0% 100%; /* White text on primary color */  
 
-    --muted: 130 20% 93%;
-    --muted-foreground: 149 20% 45%; /* More desaturated and lighter green */
+    --secondary: 130 20% 90%; /* Muted green for secondary elements */  
+    --secondary-foreground: 149 25% 25%; /* Darker green for text */  
 
-    --accent: 47 88% 44%; /* Soft Yellow: #D4AC0D */
-    --accent-foreground: 47 50% 10%; /* Dark Brown/Black (for text on yellow) */
+    --muted: 130 20% 93%; /* Light muted green for less prominent elements */  
+    --muted-foreground: 149 20% 45%; /* Slightly darker for muted text */  
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --accent: 47 88% 44%; /* Soft yellow (#D4AC0D) as an accent color */  
+    --accent-foreground: 47 50% 10%; /* Dark brown/black for text on yellow background */  
 
-    --border: 130 20% 88%; /* Slightly darker shade of background */
-    --input: 130 20% 88%;
-    --ring: 149 38% 32%; /* Primary color for rings */
+    --destructive: 0 84.2% 60.2%; /* Red tones for destructive actions */  
+    --destructive-foreground: 0 0% 98%; /* Almost white text on destructive background */  
 
-    --radius: 0.5rem;
+    --border: 130 20% 88%; /* Slightly darker shade of background for borders */  
+    --input: 130 20% 88%; /* Input background color matching border */  
 
-    /* Chart colors (can be adjusted if charts are used) */
-    --chart-1: 149 70% 50%;
-    --chart-2: 47 80% 60%;
-    --chart-3: 130 60% 70%;
-    --chart-4: 200 70% 55%;
-    --chart-5: 30 80% 65%;
-    
-    /* Sidebar specific colors (can be kept as is or themed if sidebar is used) */
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
+    --ring: 149 38% 32%; /* Primary color for rings or focus outlines */  
 
-  .dark {
-    /* Define dark theme variables if needed, for now keeping it consistent with light or default dark */
-    --background: 149 25% 15%; /* Dark Slate Green */
-    --foreground: 130 30% 90%; /* Light Muted Green */
+    --radius: 0.5rem; /* Base border-radius for rounded corners */  
 
-    --card: 149 25% 20%;
-    --card-foreground: 130 30% 90%;
+    /* Chart colors for data visualization (adjustable) */  
+    --chart-1: 149 70% 50%;  
+    --chart-2: 47 80% 60%;  
+    --chart-3: 130 60% 70%;  
+    --chart-4: 200 70% 55%;  
+    --chart-5: 30 80% 65%;  
 
-    --popover: 149 25% 20%;
-    --popover-foreground: 130 30% 90%;
+    /* Sidebar specific colors (optional, can be used for sidebar theming) */  
+    --sidebar-background: 0 0% 98%;  
+    --sidebar-foreground: 240 5.3% 26.1%;  
+    --sidebar-primary: 240 5.9% 10%;  
+    --sidebar-primary-foreground: 0 0% 98%;  
+    --sidebar-accent: 240 4.8% 95.9%;  
+    --sidebar-accent-foreground: 240 5.9% 10%;  
+    --sidebar-border: 220 13% 91%;  
+    --sidebar-ring: 217.2 91.2% 59.8%;  
+  }  
 
-    --primary: 149 45% 45%; /* Brighter Forest Green for dark mode */
-    --primary-foreground: 0 0% 100%;
+  /* Dark theme overrides, applying different color variables for dark mode */  
+  .dark {  
+    --background: 149 25% 15%; /* Dark slate green background */  
+    --foreground: 130 30% 90%; /* Light muted green for text */  
 
-    --secondary: 149 20% 25%;
-    --secondary-foreground: 130 30% 85%;
+    --card: 149 25% 20%; /* Darker card background */  
+    --card-foreground: 130 30% 90%; /* Light text on dark card */  
 
-    --muted: 149 20% 25%;
-    --muted-foreground: 130 25% 65%;
+    --popover: 149 25% 20%;  
+    --popover-foreground: 130 30% 90%;  
 
-    --accent: 47 75% 55%; /* Slightly brighter Yellow for dark mode */
-    --accent-foreground: 47 80% 15%;
+    --primary: 149 45% 45%; /* Brighter green for dark mode */  
+    --primary-foreground: 0 0% 100%; /* White text */  
 
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 0 0% 98%;
+    --secondary: 149 20% 25%;  
+    --secondary-foreground: 130 30% 85%; /* Light secondary text */  
+        --muted: 149 20% 25%;
+    --muted-foreground: 130 25% 65%; /* Slightly lighter muted text */
 
-    --border: 149 20% 30%;
-    --input: 149 20% 30%;
-    --ring: 149 45% 45%;
-    
+    --accent: 47 75% 55%; /* Slightly brighter yellow accent for dark mode */
+    --accent-foreground: 47 80% 15%; /* Darker text on accent background */
+
+    --destructive: 0 70% 50%; /* Darker red tones for destructive actions */
+    --destructive-foreground: 0 0% 98%; /* Light text */
+
+    --border: 149 20% 30%; /* Darker border color for dark mode */
+    --input: 149 20% 30%; /* Input background for dark theme */
+    --ring: 149 45% 45%; /* Ring color matching primary for focus */
+
+    /* Chart colors adapted for dark mode for better visibility */
     --chart-1: 149 60% 60%;
     --chart-2: 47 70% 70%;
     --chart-3: 130 50% 80%;
     --chart-4: 200 60% 65%;
     --chart-5: 30 70% 75%;
 
+    /* Sidebar colors for dark mode */
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -103,12 +110,13 @@ body {
   }
 }
 
+/* Apply base styles within the @layer directive */
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border; /* Apply border color from CSS variable to all elements */
   }
   body {
-    @apply bg-background text-foreground;
-    min-height: 100vh;
+    @apply bg-background text-foreground; /* Set background and text color from variables */
+    min-height: 100vh; /* Ensure body takes full viewport height */
   }
 }
