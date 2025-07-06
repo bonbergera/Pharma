@@ -1,7 +1,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductRegistrationTab } from "@/components/pharma/product-registration-tab";
 import { ProductVerificationTab } from "@/components/pharma/product-verification-tab";
-import { Barcode, ShieldCheck, PackagePlus } from "lucide-react"; // Changed QrCode to Barcode
+import { Barcode, ShieldCheck, PackagePlus } from "lucide-react";
 
 export default function PharmaChainVerifierPage() {
   return (
