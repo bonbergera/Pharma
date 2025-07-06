@@ -1,5 +1,4 @@
 export interface Product {
-  _id?: string; // Optional: MongoDB will add this
   serialNumber: string;
   name: string;
   manufacturer: string;
