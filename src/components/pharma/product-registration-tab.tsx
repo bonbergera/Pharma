@@ -128,13 +128,22 @@ export function ProductRegistrationTab() {
         setName('');
         setManufacturer('');
       } else {
-        // Show error toast if API responded with error
-        toast({
-          title: "Error",
-          description: data?.error || "Failed to register product.",
-          variant: "destructive",
-        });
-      }
+  // Check for duplicate error
+  if (response.status === 409 && data?.message?.includes("already exists")) {
+    toast({
+      title: "Duplicate Product",
+      description: data.message, // the actual message from backend
+      variant: "destructive",
+    });
+  } else {
+    // Generic error
+    toast({
+      title: "Error",
+      description: data?.message || "Failed to register product.",
+      variant: "destructive",
+    });
+  }
+}
     } catch (error) {
       // Catch and report network errors
       console.error('Fetch error:', error);
